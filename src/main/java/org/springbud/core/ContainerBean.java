@@ -3,6 +3,7 @@ package org.springbud.core;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springbud.aop.annotation.Aspect;
 import org.springbud.core.annotation.Component;
 import org.springbud.core.annotation.Controller;
 import org.springbud.core.annotation.Repository;
@@ -25,7 +26,8 @@ public class ContainerBean {
     private final static List<Class<? extends Annotation>> BEAN_ANNOTATION = Arrays.asList(Component.class,
             Controller.class,
             Repository.class,
-            Service.class);
+            Service.class,
+            Aspect.class);
 
     // flag for if the bean container has been loaded
     private static boolean loaded = false;
