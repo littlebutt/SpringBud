@@ -7,6 +7,7 @@ import org.springbud.aop.support.AspectDefinition;
 
 import java.lang.reflect.Method;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 public class AspectListExecutor implements MethodInterceptor {
@@ -37,8 +38,12 @@ public class AspectListExecutor implements MethodInterceptor {
     @Override
     public Object intercept(Object proxy, Method method, Object[] args, MethodProxy methodProxy) throws Throwable {
         Object returnValue = null;
-        if (aspectDefinitionList.isEmpty())
+        collectAccurateMatchedAspectList(method);
+        if (aspectDefinitionList.isEmpty()) {
+            returnValue = methodProxy.invokeSuper(proxy, args);
             return returnValue;
+        }
+
         for (int i = 0;i < aspectDefinitionList.size();i ++) {
             aspectDefinitionList.get(i).getDefaultAspect().before(targetClass, method, args);
         }
@@ -57,5 +62,19 @@ public class AspectListExecutor implements MethodInterceptor {
             }
         }
         return returnValue;
+    }
+
+    /**
+     * Remove the method which cannot match the pointcut
+     * @param method the matching methods
+     */
+    private void collectAccurateMatchedAspectList(Method method) {
+        Iterator<AspectDefinition> it = aspectDefinitionList.iterator();
+        while (it.hasNext()){
+            AspectDefinition aspectDefinition = it.next();
+            if (!aspectDefinition.getPointcutLocator().accurateMatches(method)){
+                it.remove();
+            }
+        }
     }
 }

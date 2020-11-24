@@ -5,7 +5,6 @@ import org.springbud.aop.annotation.Order;
 import org.springbud.aop.support.AspectDefinition;
 import org.springbud.aop.support.DefaultAspect;
 import org.springbud.core.ContainerBean;
-import org.springbud.exceptions.FailToWeaveException;
 
 import java.lang.annotation.Annotation;
 import java.util.*;
@@ -22,71 +21,77 @@ public class AspectWeaver {
         containerBean = ContainerBean.getInstance();
     }
 
+    /**
+     * The core method for doing AOP
+     */
     public void doAop(){
         Set<Class<?>> aspectSet = containerBean.getClassesByAnnotation(Aspect.class);
         if (aspectSet.isEmpty())
             return;
-        for (Class<?> aspectClass : aspectSet) {
-            if (verify(aspectClass)){
-                categorizeClass(categorizedMap, aspectClass);
-            } else {
-                throw new FailToWeaveException("Incorrect annotations or extension, value");
+        List<AspectDefinition> aspectDefinitionList = packAspectDefinitionList(aspectSet);
+        Set<Class<?>> classSet = containerBean.getClasses();
+        for (Class<?> targetClass : classSet) {
+            if (targetClass.isAnnotationPresent(Aspect.class))
+                continue;
+            List<AspectDefinition> roughMatchedAspectList = collectRoughMatchedAspectListForSpecificClass(aspectDefinitionList, targetClass);
+            wrapIfNecessary(roughMatchedAspectList, targetClass);
+        }
+    }
+
+    /**
+     * Put them into AspectListExecutor and weave them by ProxyCreator
+     * @param roughMatchedAspectList the rough matched classes
+     * @param targetClass the class need to weave
+     */
+    private void wrapIfNecessary(List<AspectDefinition> roughMatchedAspectList, Class<?> targetClass) {
+        if (roughMatchedAspectList == null || roughMatchedAspectList.isEmpty())
+            return;
+        AspectListExecutor aspectListExecutor = new AspectListExecutor(targetClass, roughMatchedAspectList);
+        Object porxBean = ProxyCreator.createProxy(targetClass, aspectListExecutor);
+        containerBean.addBean(targetClass, porxBean);
+    }
+
+    /**
+     * Use the rough match method in the pointcut locator, which is in the AspectDefinition to do rough match for all possible classes
+     * @param aspectDefinitionList the list of AspectDefinition
+     * @param targetClass all possible classes
+     * @return the filtered classes
+     */
+    private List<AspectDefinition> collectRoughMatchedAspectListForSpecificClass(List<AspectDefinition> aspectDefinitionList, Class<?> targetClass) {
+        List<AspectDefinition> result = new ArrayList<>();
+        if (aspectDefinitionList.isEmpty())
+            return null;
+        for (AspectDefinition aspectDefinition : aspectDefinitionList) {
+            if (aspectDefinition.getPointcutLocator().rougnMatches(targetClass))
+                result.add(aspectDefinition);
+        }
+        return result;
+    }
+
+    /**
+     * Pack the class with @Aspect annotation into an AspectDefinition List
+     * @param aspectSet the set of class with @Aspect annotation
+     * @return the AspectDefinition List
+     */
+    private List<AspectDefinition> packAspectDefinitionList(Set<Class<?>> aspectSet) {
+        List<AspectDefinition> aspectDefinitionList = new ArrayList<>();
+        for (Class<?> targetClass : aspectSet) {
+            if (verify(targetClass)) {
+                Aspect aspectTag = targetClass.getAnnotation(Aspect.class);
+                Order orderTag = targetClass.getAnnotation(Order.class);
+                DefaultAspect defaultAspect = (DefaultAspect) containerBean.getBean(targetClass);
+                PointcutLocator pointcutLocator = new PointcutLocator(aspectTag.pointcut());
+                AspectDefinition aspectDefinition = new AspectDefinition(orderTag.value(),defaultAspect,pointcutLocator);
+                aspectDefinitionList.add(aspectDefinition);
             }
         }
-        if (categorizedMap.isEmpty())
-            return;
-        for (Class<? extends Annotation> category : categorizedMap.keySet()) {
-            weaveByCategory(category, categorizedMap.get(category));
-        }
-    }
-
-    /**
-     * Weave by category
-     * @param category @Aspect annotation (to get annotated classes)
-     * @param aspectDefinitions the list of definition (to construct MethodInterceptor)
-     */
-    private void weaveByCategory(Class<? extends Annotation> category, List<AspectDefinition> aspectDefinitions) {
-        Set<Class<?>> classSet = containerBean.getClassesByAnnotation(category);
-        if (classSet.isEmpty())
-            return;
-        for (Class<?> targetClass : classSet) {
-            AspectListExecutor aspectListExecutor = new AspectListExecutor(targetClass,aspectDefinitions);
-            Object bean = ProxyCreator.createProxy(targetClass,aspectListExecutor);
-            containerBean.addBean(targetClass, bean);
-        }
-
-    }
-
-    /**
-     * Fill the categorized map, AspectTag - Aspect Definition
-     * The Aspect class is like:
-     * / @Aspect(Controller.class)
-     * / class aspectClass extends DefaultAspect {
-     * /
-     * / }
-     * @param categorizedMap the categorized map
-     * @param aspectClass class with @Aspect annotation
-     */
-    private void categorizeClass(Map<Class<? extends Annotation>, List<AspectDefinition>> categorizedMap, Class<?> aspectClass) {
-        Aspect aspectTag = aspectClass.getAnnotation(Aspect.class);
-        Order orderTag = aspectClass.getAnnotation(Order.class);
-        DefaultAspect aspect = (DefaultAspect) containerBean.getBean(aspectClass);
-        AspectDefinition aspectDefinition = new AspectDefinition(orderTag.value(),aspect);
-        if (!categorizedMap.containsKey(aspectTag.value())){
-            List<AspectDefinition> list = new ArrayList<>();
-            list.add(aspectDefinition);
-            categorizedMap.put(aspectTag.value(), list);
-        } else {
-            List<AspectDefinition> list = categorizedMap.get(aspectTag.value());
-            list.add(aspectDefinition);
-        }
+        return aspectDefinitionList;
     }
 
     private boolean verify(Class<?> aspectClass) {
         return aspectClass.isAnnotationPresent(Aspect.class) &&
                 aspectClass.isAnnotationPresent(Order.class) &&
-                DefaultAspect.class.isAssignableFrom(aspectClass) &&
-                aspectClass.getAnnotation(Aspect.class).value() != Aspect.class;
+                DefaultAspect.class.isAssignableFrom(aspectClass);
 
     }
 }
