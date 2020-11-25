@@ -71,14 +71,18 @@ public class ContainerBean {
     /**
      * load bean in given scope into the inner bean map
      * @param packageName The scope of beans
-     * @throws ClassNotFoundException The class is not found
      */
-    public void loadBeans(String packageName) throws ClassNotFoundException, IOException {
+    public void loadBeans(String packageName) {
         if (loaded) {
             log.warn("Bean container has been loaded");
             return;
         }
-        Set<Class<?>> classSet = ClassUtil.extractPackageClasses(packageName);
+        Set<Class<?>> classSet = null;
+        try {
+            classSet = ClassUtil.extractPackageClasses(packageName);
+        } catch (ClassNotFoundException | IOException e) {
+            e.printStackTrace();
+        }
         if (classSet == null || classSet.isEmpty()) {
             log.warn("Class set is empty");
             return;
