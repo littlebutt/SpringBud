@@ -7,6 +7,7 @@ import java.lang.annotation.Target;
 
 @Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)
+@Deprecated
 public @interface RequestParam {
 
     String value() default "";
