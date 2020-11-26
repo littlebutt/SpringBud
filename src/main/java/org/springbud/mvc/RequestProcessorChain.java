@@ -35,7 +35,7 @@ public class RequestProcessorChain {
         this.response = resp;
         this.requestPath = req.getRequestURI();
         this.requestMethod = req.getMethod();
-        this.responseCode = HttpServletResponse.SC_CONTINUE;
+        this.responseCode = HttpServletResponse.SC_OK;
     }
 
     /**

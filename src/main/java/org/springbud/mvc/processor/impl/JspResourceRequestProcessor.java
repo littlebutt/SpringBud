@@ -10,7 +10,7 @@ import javax.servlet.ServletContext;
 public class JspResourceRequestProcessor implements RequestProcessor {
     public static final String JSP_SERVLET = "jsp";
 
-    public static final String JSP_RESOURCE_PREFIX = "/template/";
+    public static final String JSP_RESOURCE_PREFIX = "/templates/";
 
     private final RequestDispatcher requestDispatcher;
 

@@ -6,6 +6,7 @@ import org.springbud.exceptions.RequestProcessorException;
 import org.springbud.mvc.RequestProcessorChain;
 import org.springbud.mvc.annotation.RequestMapping;
 import org.springbud.mvc.annotation.RequestParam;
+import org.springbud.mvc.annotation.ResponseBody;
 import org.springbud.mvc.processor.RequestProcessor;
 import org.springbud.mvc.render.ResultRender;
 import org.springbud.mvc.render.impl.JsonResultRender;
@@ -30,6 +31,7 @@ public class ControllerRequestProcessor implements RequestProcessor {
     private final Map<RequestPathDefinition, ControllerMethod> requestPathDefinitionControllerMethodMap = new HashMap<>();
 
     private final ContainerBean containerBean;
+
     /**
      * Fill the requestPathDefinitionControllerMethodMap once constructed.
      */
@@ -41,6 +43,7 @@ public class ControllerRequestProcessor implements RequestProcessor {
 
     /**
      * Traverse all layers of RequestMapping annotated classes and fill requestPathDefinitionControllerMethodMap.
+     *
      * @param requestMappingClasses All the classes in the container with RequestMapping annotation.
      */
     private void initRequestPathDefinitionControllerMethodMap(Set<Class<?>> requestMappingClasses) {
@@ -49,14 +52,14 @@ public class ControllerRequestProcessor implements RequestProcessor {
         for (Class<?> requestMappingClass : requestMappingClasses) {
             RequestMapping requestMappingTag = requestMappingClass.getAnnotation(RequestMapping.class);
             String basePath = requestMappingTag.value();
-            if (!basePath.startsWith("/")){
+            if (!basePath.startsWith("/")) {
                 basePath = "/" + basePath;
             }
             Method[] requestMappingMethods = requestMappingClass.getDeclaredMethods();
             if (requestMappingMethods.length == 0)
                 continue;
             for (Method requestMappingMethod : requestMappingMethods) {
-                if (requestMappingMethod.isAnnotationPresent(RequestMapping.class)){
+                if (requestMappingMethod.isAnnotationPresent(RequestMapping.class)) {
                     RequestMapping requestMappingMethodTag = requestMappingMethod.getAnnotation(RequestMapping.class);
                     String methodPath = requestMappingMethodTag.value();
                     if (!methodPath.startsWith("/")) {
@@ -65,19 +68,21 @@ public class ControllerRequestProcessor implements RequestProcessor {
                     String url = basePath + methodPath;
                     Parameter[] parameters = requestMappingMethod.getParameters();
                     Map<String, Class<?>> paramMap = new HashMap<>();
-                    if (parameters == null || parameters.length == 0)
-                        continue;
-                    for (Parameter parameter : parameters) {
-                        RequestParam requestParamTag = parameter.getAnnotation(RequestParam.class);
-                        if (requestParamTag == null)
-                            throw new RequestProcessorException("Parameters must have @RequestParam");
-                        paramMap.put(requestParamTag.value(), parameter.getType());
-                        RequestPathDefinition requestPathDefinition = new RequestPathDefinition(url,String.valueOf(requestMappingTag.method()));
-                        if (this.requestPathDefinitionControllerMethodMap.containsKey(requestPathDefinition))
-                            log.warn("{} has already mapped", url);
-                        ControllerMethod controllerMethod = new ControllerMethod(requestMappingClass, requestMappingMethod, paramMap);
-                        this.requestPathDefinitionControllerMethodMap.put(requestPathDefinition, controllerMethod);
+                    if (parameters != null && parameters.length > 0) {
+                        for (Parameter parameter : parameters) {
+                            RequestParam requestParamTag = parameter.getAnnotation(RequestParam.class);
+                            if (requestParamTag == null)
+                                throw new RequestProcessorException("Parameters must have @RequestParam");
+                            paramMap.put(requestParamTag.value(), parameter.getType());
+                        }
                     }
+
+                    RequestPathDefinition requestPathDefinition = new RequestPathDefinition(url, String.valueOf(requestMappingTag.method()));
+                    if (this.requestPathDefinitionControllerMethodMap.containsKey(requestPathDefinition))
+                        log.warn("{} has already mapped", url);
+                    ControllerMethod controllerMethod = new ControllerMethod(requestMappingClass, requestMappingMethod, paramMap);
+                    this.requestPathDefinitionControllerMethodMap.put(requestPathDefinition, controllerMethod);
+
                 }
             }
         }
@@ -85,6 +90,7 @@ public class ControllerRequestProcessor implements RequestProcessor {
 
     /**
      * Called when processing every requests from clients
+     *
      * @param requestProcessorChain the job chain for processing requests
      * @return true if taking the current job
      * @throws Exception any exception
@@ -93,7 +99,7 @@ public class ControllerRequestProcessor implements RequestProcessor {
     public boolean process(RequestProcessorChain requestProcessorChain) throws Exception {
         String requestMethod = requestProcessorChain.getRequestMethod();
         String requestPath = requestProcessorChain.getRequestPath();
-        ControllerMethod controllerMethod = requestPathDefinitionControllerMethodMap.get(new RequestPathDefinition(requestPath,requestMethod));
+        ControllerMethod controllerMethod = requestPathDefinitionControllerMethodMap.get(new RequestPathDefinition(requestPath, requestMethod));
         if (controllerMethod == null) {
             requestProcessorChain.setResultRender(new ResourceNotFoundResultRender(requestMethod, requestPath));
             return false;
@@ -107,7 +113,7 @@ public class ControllerRequestProcessor implements RequestProcessor {
         if (result == null)
             return;
         ResultRender resultRender;
-        if (controllerMethod.getInvokeMethod().isAnnotationPresent(RequestMapping.class)) {
+        if (controllerMethod.getInvokeMethod().isAnnotationPresent(ResponseBody.class)) {
             resultRender = new JsonResultRender(result);
         } else {
             resultRender = new ViewResultRender(result);

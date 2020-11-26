@@ -8,6 +8,9 @@ import org.springbud.core.annotation.Component;
 import org.springbud.core.annotation.Controller;
 import org.springbud.core.annotation.Repository;
 import org.springbud.core.annotation.Service;
+import org.springbud.mvc.annotation.RequestMapping;
+import org.springbud.mvc.annotation.RequestParam;
+import org.springbud.mvc.annotation.ResponseBody;
 import org.springbud.util.ClassUtil;
 
 import java.io.IOException;
@@ -27,7 +30,10 @@ public class ContainerBean {
             Controller.class,
             Repository.class,
             Service.class,
-            Aspect.class);
+            Aspect.class,
+            RequestMapping.class,
+            RequestParam.class,
+            ResponseBody.class);
 
     // flag for if the bean container has been loaded
     private static boolean loaded = false;
@@ -138,7 +144,7 @@ public class ContainerBean {
      * @return the set of beans
      */
     public Set<Object> getBeans() {
-        return (HashSet<Object>)beanMap.values();
+        return new HashSet<Object>(beanMap.values());
     }
 
     /**
