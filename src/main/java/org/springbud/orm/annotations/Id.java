@@ -10,6 +10,4 @@ import java.lang.annotation.Target;
 public @interface Id {
     String name();
     String type() default "INTEGER";
-    int length() default 20;
-    int increment() default 1;
 }

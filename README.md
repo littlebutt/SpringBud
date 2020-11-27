@@ -1,5 +1,7 @@
 # SpringBud 
 
+![](https://img.shields.io/github/languages/top/littlebutt/SpringBud) ![](https://img.shields.io/github/license/littlebutt/SpringBud) ![](https://img.shields.io/github/repo-size/littlebutt/SpringBud)
+
 ## Introduction
 
 This is a nano version of famous Java Framework SpringBoot. The purpose of the project is to learn the architecture and programming thought of SpringBoot.
@@ -94,6 +96,63 @@ Annotations include `@RequestMapping`, `@RequestParam`, and `@ResponseBody`:
 #### Usages
 
 To use this module, a tomcat server must be deployed. The classes with these annotations will be explained as controllers. In addition, the package name will also be set.
+
+### ORM Model
+
+The ORM module is implemented in `org.springbud.orm`. It uses reflection to create tables (default) and insert data into tables. Currently, the query function does not support because of the constructor issue.
+
+#### Annotation
+
+Annotations include `@DatabaseConfigurer`, `@Table`, `@Id`, and `@Column`:
+
+| Annotation | Parameters | Description |
+|------------| -----------|-------------|
+|`@DatabaseConfigurer` | `host`, `port`, `database`, `username`, `password` | The configuration class for the connection of the database |
+|`@Table`| `name` | The table in the database |
+|`@Id` | `type`, `name` | The Id of a record in the table |
+|`@Column` | `type`, `name` | The column of a record in the table |
+
+#### Usages
+
+To use ORM in the framework, a configurer class and an entity are necessary. In the configurer class:
+
+```java
+import org.springbud.orm.annotations.DatabaseConfigurer;
+
+@DatabaseConfigurer(password = "root" /* Some other configuration*/)
+class DatabaseConfig{
+}
+```
+
+In an entity class:
+
+```java
+import org.springbud.core.annotation.Component;
+import org.springbud.orm.annotations.Id;import org.springbud.orm.annotations.Table;
+
+@Table("table1")
+@Component
+class Entity {
+    @Id(type = "INTEGER", name = "id")
+    private int id;
+    // ...
+}
+```
+
+When inserting entity:
+
+```java
+class Test{
+    public static void main(String[] args){
+      new DatabaseProcessor().insert(new Entity(1));
+    }
+}
+```
+
+## TODO
+
+- Reconstruct the MVC module
+- The query function in ORM module
 
 ## Reference
  
