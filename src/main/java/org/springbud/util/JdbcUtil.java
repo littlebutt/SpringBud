@@ -3,8 +3,11 @@ package org.springbud.util;
 import lombok.extern.slf4j.Slf4j;
 import org.springbud.orm.support.TableDefinition;
 
+import java.lang.reflect.InvocationTargetException;
 import java.sql.*;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 public class JdbcUtil {
@@ -12,7 +15,7 @@ public class JdbcUtil {
         Connection conn = null;
         try {
             Class.forName("com.mysql.jdbc.Driver");
-            conn = DriverManager.getConnection("jdbc:mysql://" + host + ":" + String.valueOf(port) + "/" + database, username, password);
+            conn = DriverManager.getConnection("jdbc:mysql://" + host + ":" + String.valueOf(port) + "/" + database +"?useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=UTC", username, password);
         }catch(Exception e){
             log.error("Fail to connect database " +  host + ":" + String.valueOf(port) + "/" + database);
             e.printStackTrace();
@@ -20,28 +23,46 @@ public class JdbcUtil {
         return conn;
     }
 
-    public static int execute(Connection conn, String sql, Object[] params){
+    public static boolean execute(Connection conn, String sql){
         PreparedStatement pstmt =null;
-        int result = -1;
+        boolean result = false;
         try {
             pstmt = conn.prepareStatement(sql);
-            for (int i = 0; i < params.length; i ++){
-                pstmt.setObject(i+1, params[i]);
-            }
-            result = pstmt.executeUpdate();
-        } catch (SQLException e) {
-            log.error("Fail to execute " + sql);
-            System.out.println(e.getMessage());
-        }
-        finally {
+            result = pstmt.execute(sql);
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        } finally {
             try {
-                assert pstmt != null;
                 pstmt.close();
             } catch (SQLException throwables) {
                 throwables.printStackTrace();
             }
         }
+
         return result;
+    }
+
+    public static <E> Set<E> query(Connection conn, String sql, E entity) {
+        int numFields = entity.getClass().getDeclaredFields().length;
+        Set<E> returnEntities = new HashSet<>();
+        try {
+
+            Statement stmt = conn.createStatement();
+            ResultSet set = stmt.executeQuery(sql);
+
+            while (set.next()) {
+                Object[] objects = new Object[numFields];
+                for (int i = 0;i < numFields;i ++) {
+                    objects[i] = set.getString(i + 1);
+                }
+
+                E newEntity = (E) entity.getClass().getDeclaredConstructor().newInstance(objects);
+                returnEntities.add(newEntity);
+            }
+        } catch (InstantiationException | InvocationTargetException | SQLException | IllegalAccessException | NoSuchMethodException e) {
+            e.printStackTrace();
+        }
+        return returnEntities;
     }
 
     public static int create(Connection conn, TableDefinition definition) {
@@ -52,8 +73,8 @@ public class JdbcUtil {
             if (typeNameMap.isEmpty())
                 return returnValue;
             StringBuffer sql = new StringBuffer("CREATE TABLE " + definition.getName() + " (");
-            typeNameMap.forEach((t, n) -> {
-                sql.append(t).append(" ").append(n).append(", ");
+            typeNameMap.forEach((n, t) -> {
+                sql.append(n).append(" ").append(t).append(", ");
             });
             sql.deleteCharAt(sql.length() - 2);
             sql.append(");");
