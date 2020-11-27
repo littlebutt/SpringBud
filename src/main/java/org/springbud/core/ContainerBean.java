@@ -11,6 +11,10 @@ import org.springbud.core.annotation.Service;
 import org.springbud.mvc.annotation.RequestMapping;
 import org.springbud.mvc.annotation.RequestParam;
 import org.springbud.mvc.annotation.ResponseBody;
+import org.springbud.orm.annotations.Column;
+import org.springbud.orm.annotations.DatabaseConfigurer;
+import org.springbud.orm.annotations.Id;
+import org.springbud.orm.annotations.Table;
 import org.springbud.util.ClassUtil;
 
 import java.io.IOException;
@@ -33,7 +37,11 @@ public class ContainerBean {
             Aspect.class,
             RequestMapping.class,
             RequestParam.class,
-            ResponseBody.class);
+            ResponseBody.class,
+            DatabaseConfigurer.class,
+            Id.class,
+            Table.class,
+            Column.class);
 
     // flag for if the bean container has been loaded
     private static boolean loaded = false;
